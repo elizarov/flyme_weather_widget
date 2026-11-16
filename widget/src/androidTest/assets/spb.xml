@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+<channel>
+<title>Гидрометцентр России: О погоде - из первых рук</title>
+<link>http://www.meteoinfo.ru</link>
+<description>Прогноз погоды для городов России и мира</description>
+<ttl>60</ttl>
+<item><title>Санкт-Петербург, 16 ноября</title>
+<link>http://meteoinfo.ru/forecasts5000/russia/leningrad-region/sankt-peterburg#2783265798</link>
+<description>Облачно, без осадков. Температура ночью 3°, днём 4°. Ветер южный, 5 м/с. Атмосферное давление ночью 754 мм рт.ст., днём 756 мм рт.ст.Вероятность осадков 1%</description>
+<category>Погода</category>
+<source url="http://meteoinfo.ru/rss/forecasts/26063">meteoinfo.ru: Санкт-Петербург, прогноз обновлён 16.11.2026 в 11:14(UTC)</source>
+<guid>2783265798</guid>
+</item>
+<item><title>Санкт-Петербург, 17 ноября</title>
+<link>http://meteoinfo.ru/forecasts5000/russia/leningrad-region/sankt-peterburg#2783265799</link>
+<description>Облачно, небольшой дождь. Температура ночью 2°, днём 5°. Ветер юго-восточный, 5 м/с. Атмосферное давление ночью 747 мм рт.ст., днём 751 мм рт.ст.Вероятность осадков 87%</description>
+<category>Погода</category>
+<source url="http://meteoinfo.ru/rss/forecasts/26063">meteoinfo.ru: Санкт-Петербург, прогноз обновлён 16.11.2026 в 11:14(UTC)</source>
+<guid>2783265799</guid>
+</item>
+<item><title>Санкт-Петербург, 18 ноября</title>
+<link>http://meteoinfo.ru/forecasts5000/russia/leningrad-region/sankt-peterburg#2783265800</link>
+<description>Облачно, небольшой кратковременный дождь. Температура ночью 3°, днём 4°. Ветер юго-восточный, 3 м/с. Атмосферное давление ночью 743 мм рт.ст., днём 744 мм рт.ст.Вероятность осадков 79%</description>
+<category>Погода</category>
+<source url="http://meteoinfo.ru/rss/forecasts/26063">meteoinfo.ru: Санкт-Петербург, прогноз обновлён 16.11.2026 в 11:14(UTC)</source>
+<guid>2783265800</guid>
+</item>
+</channel></rss>

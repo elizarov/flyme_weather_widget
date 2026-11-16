@@ -1,0 +1,3 @@
+<overlay>
+    <item target="xml/widget_profiles" value="@xml/widget_profiles" />
+</overlay>

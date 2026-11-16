@@ -1,0 +1,4 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250px" android:minHeight="255px"
+    android:updatePeriodMillis="0" android:initialLayout="@layout/weather"
+    android:widgetCategory="home_screen" />
