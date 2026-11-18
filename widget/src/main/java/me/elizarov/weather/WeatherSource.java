@@ -1,6 +1,6 @@
 package me.elizarov.weather;
 
-import me.elizarov.weather.hmc.HmcForecastProvider;
+import me.elizarov.weather.hmc.forecast.HmcForecastProvider;
 import me.elizarov.weather.openmeteo.OpenMeteoForecastProvider;
 import me.elizarov.weather.yandex.YandexForecastProvider;
 

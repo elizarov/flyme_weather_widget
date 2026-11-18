@@ -1,6 +1,8 @@
-package me.elizarov.weather.hmc;
+package me.elizarov.weather.hmc.forecast;
 
 import me.elizarov.weather.ForecastProvider;
+import me.elizarov.weather.hmc.HmcClient;
+import me.elizarov.weather.hmc.catalog.HmcLocationCatalog;
 import me.elizarov.weather.LocationPolicy;
 import me.elizarov.weather.WeatherCards;
 import me.elizarov.weather.WeatherCondition;
@@ -42,7 +44,7 @@ public final class HmcForecastProvider extends ForecastProvider<ForecastProvider
                 if (LocationPolicy.canReuseStation(cache, location))
                     return new Target(cache.getString("located_station", ""), location);
                 String body = stationRequest(location);
-                JSONArray response = new JSONArray(HmcClient.request("https://meteoinfo.ru/hmc-output/forecast/tab_0.php", body));
+                JSONArray response = new JSONArray(HmcClient.nearbyStation(body));
                 Matcher match = STATION.matcher(response.getJSONArray(8).getString(0));
                 if (!match.find())
                     throw new IllegalArgumentException("No forecast station in location response");
@@ -62,12 +64,12 @@ public final class HmcForecastProvider extends ForecastProvider<ForecastProvider
     @Override
     protected String download(WeatherConfig config, Target target, SharedPreferences cache,
                               SharedPreferences.Editor result, long now) throws Exception {
-        String xml = HmcClient.request("https://meteoinfo.ru/rss/forecasts/index.php?s=" + target.id, null);
+        String xml = HmcClient.forecast(target.id);
         List<HmcForecast> forecasts = HmcForecast.parse(xml);
         String conditions = HmcConditions.merge(HmcConditions.cached(cache, target.id), "{}", forecasts);
         String conditionsError = "";
         try {
-            String page = HmcClient.request(FORECASTS + HmcConditions.pathFromRss(xml), null);
+            String page = HmcClient.cityPage(HmcConditions.pathFromRss(xml));
             conditions = HmcConditions.merge(conditions, HmcConditions.parse(page, forecasts).toString(), forecasts);
             if (!HmcConditions.complete(conditions, now))
                 conditionsError = "Missing day/night conditions";
@@ -113,7 +115,7 @@ public final class HmcForecastProvider extends ForecastProvider<ForecastProvider
         return forecastUrl(cachedForecast(cache(context), config), config.cityPath);
     }
 
-    String cachedCityPath(Context context) {
+    public String cachedCityPath(Context context) {
         try {
             return HmcConditions.pathFromRss(cache(context).getString("forecast", ""));
         } catch (IllegalArgumentException ignored) {

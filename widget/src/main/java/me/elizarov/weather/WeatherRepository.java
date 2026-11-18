@@ -1,5 +1,8 @@
 package me.elizarov.weather;
 
+import me.elizarov.weather.hmc.catalog.HmcLocationCatalog;
+import me.elizarov.weather.hmc.forecast.HmcForecastProvider;
+
 import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
 import android.content.ComponentName;
@@ -16,6 +19,10 @@ public final class WeatherRepository {
     public static final String CHANGED = "me.elizarov.weather.WEATHER_CHANGED";
 
     private WeatherRepository() {
+    }
+
+    static void ensureLocationCatalog(Context context) {
+        HmcLocationCatalog.ensure(context, HmcForecastProvider.INSTANCE::cachedCityPath);
     }
 
     static void notifyChanged(Context context) {

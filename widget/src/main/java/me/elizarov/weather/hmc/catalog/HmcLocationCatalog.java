@@ -1,6 +1,7 @@
-package me.elizarov.weather.hmc;
+package me.elizarov.weather.hmc.catalog;
 
 import me.elizarov.weather.WeatherConfig;
+import me.elizarov.weather.hmc.HmcClient;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -23,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.CompletionService;
 import java.util.concurrent.ExecutorCompletionService;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -81,10 +83,19 @@ public final class HmcLocationCatalog {
         String cached = cachedStation(context, config);
         if (!cached.isEmpty() && System.currentTimeMillis() - stations.getLong("resolved_at", 0) < 86400000)
             return cached;
-        String station = HmcClient.stationForPath(config.cityPath);
+        String station = stationForPath(config.cityPath);
         stations.edit().putString("resolved_path", config.cityPath).putString("resolved_station", station)
                 .putLong("resolved_at", System.currentTimeMillis()).commit();
         return station;
+    }
+
+    private static String stationForPath(String path) throws Exception {
+        if (!path.matches("[a-zA-Z0-9_./%~-]+") || path.contains("..") || path.startsWith("/"))
+            throw new IllegalArgumentException("Invalid HMC city path");
+        String page = HmcClient.cityPage(path);
+        Matcher rss = Pattern.compile("rss/forecasts/index\\.php\\?s=([0-9]{5})(?![0-9])").matcher(page);
+        if (!rss.find()) throw new IllegalArgumentException("City has no supported RSS feed");
+        return rss.group(1);
     }
 
     public static synchronized List<HmcPlace> snapshot(Context c) {
@@ -113,7 +124,7 @@ public final class HmcLocationCatalog {
         return loading;
     }
 
-    public static synchronized void ensure(Context c) {
+    public static synchronized void ensure(Context c, Function<Context, String> recentCityPath) {
         snapshot(c);
         long now = System.currentTimeMillis();
         if (loading || now - fetchedAt < TTL || now - attemptedAt < 60000) return;
@@ -121,10 +132,10 @@ public final class HmcLocationCatalog {
         attemptedAt = now;
         status = "Загрузка каталога Гидрометцентра…";
         Context app = c.getApplicationContext();
-        worker.execute(() -> refresh(app));
+        worker.execute(() -> refresh(app, recentCityPath));
     }
 
-    private static void refresh(Context c) {
+    private static void refresh(Context c, Function<Context, String> recentCityPath) {
         Map<String, HmcPlace> places = new LinkedHashMap<>();
         Map<String, HmcPlace> fresh = new LinkedHashMap<>();
         for (HmcPlace p : cached)
@@ -144,7 +155,7 @@ public final class HmcLocationCatalog {
             }
             // Load the selected area's selector first; then Russia before the remaining countries.
             String selected = WeatherConfig.read(c).cityPath;
-            if (selected.isEmpty()) selected = HmcForecastProvider.INSTANCE.cachedCityPath(c);
+            if (selected.isEmpty()) selected = recentCityPath.apply(c);
             if (!selected.isEmpty()) queue.add(0, selected);
             queue.sort(Comparator.comparingInt(p -> p.startsWith("russia/") ? 0 : 1));
             // Fetch batches so new region selectors get priority over the remaining countries.
@@ -216,7 +227,7 @@ public final class HmcLocationCatalog {
             JSONObject saved = new JSONObject(read(file));
             if (path.equals(saved.optString("path"))) return saved;
         }
-        String body = HmcClient.request("https://meteoinfo.ru/forecasts" + (path.isEmpty() ? "" : "/" + path), null);
+        String body = HmcClient.cityPage(path);
         JSONObject result = new JSONObject().put("path", path)
                 .put("countries", options(body, "sel_country")).put("regions", options(body, "sel_reg"))
                 .put("cities", options(body, "sel_city"));

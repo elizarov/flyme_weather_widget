@@ -42,8 +42,12 @@ public final class WeatherConfig {
         ForecastProvider<?> provider = config.source.provider;
         String key = value.trim();
         if (!provider.requiresApiKey() || config.apiKey.equals(key)) return;
-        settings(context).edit().putString(provider.apiKeyPreference(), key).commit();
-        if (key.isEmpty()) provider.clearForecast(context);
+        if (key.isEmpty()) {
+            settings(context).edit().remove(provider.apiKeyPreference()).commit();
+            provider.clearForecast(context);
+        } else {
+            settings(context).edit().putString(provider.apiKeyPreference(), key).commit();
+        }
         WeatherRepository.configurationChanged(context);
     }
 

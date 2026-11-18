@@ -1,6 +1,6 @@
 package me.elizarov.weather;
 
-import me.elizarov.weather.hmc.HmcLocationCatalog;
+import me.elizarov.weather.hmc.catalog.HmcLocationCatalog;
 
 import android.content.Context;
 import android.content.SharedPreferences;

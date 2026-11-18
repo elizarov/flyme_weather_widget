@@ -1,6 +1,6 @@
 package me.elizarov.weather;
 
-import me.elizarov.weather.hmc.HmcLocationCatalog;
+import me.elizarov.weather.hmc.catalog.HmcLocationCatalog;
 
 import android.Manifest;
 import android.app.Activity;
@@ -54,6 +54,7 @@ public final class WeatherSettingsActivity extends Activity {
     private final EnumMap<WeatherSource, Button> sourceButtons = new EnumMap<>(WeatherSource.class);
     private LinearLayout locationControls, keyControls;
     private EditText apiKey;
+    private Button deleteKey;
     private WeatherSource keyEditorSource;
     private List<HmcLocationCatalog.HmcPlace> matches = java.util.Collections.emptyList();
     private boolean updating;
@@ -160,27 +161,28 @@ public final class WeatherSettingsActivity extends Activity {
         apiKey.setAutofillHints((String[]) null);
         apiKey.setPadding(dp(24), 0, dp(24), 0);
         apiKey.setBackground(shape(surface, 4));
-        keyControls.addView(apiKey, new LinearLayout.LayoutParams(-1, dp(72)));
+        LinearLayout keyRow = row();
+        keyRow.addView(apiKey, new LinearLayout.LayoutParams(0, -1, 1));
+        deleteKey = keyButton("Удалить ключ");
+        deleteKey.setOnClickListener(v -> {
+            apiKey.setText("");
+            apiKey.setError(null);
+            persistApiKey("");
+        });
+        LinearLayout.LayoutParams deletePosition = new LinearLayout.LayoutParams(-2, -1);
+        deletePosition.setMarginStart(dp(12));
+        keyRow.addView(deleteKey, deletePosition);
+        keyControls.addView(keyRow, new LinearLayout.LayoutParams(-1, dp(72)));
         LinearLayout keyActions = row();
         gap(keyControls, 12);
-        Button save = new Button(this);
-        save.setBackground(actionBackground(false));
-        save.setStateListAnimator(null);
-        save.setTextColor(ink);
-        save.setPadding(dp(24), 0, dp(24), 0);
-        save.setText("Сохранить ключ");
-        save.setTextSize(26);
-        save.setAllCaps(false);
+        Button save = keyButton("Сохранить ключ");
         save.setOnClickListener(v -> {
             String value = apiKey.getText().toString().trim();
             if (!value.isEmpty() && !value.matches("[A-Za-z0-9_-]{8,256}")) {
                 apiKey.setError("Проверьте формат ключа");
                 return;
             }
-            WeatherConfig.apiKey(this, value);
-            apiKey.clearFocus();
-            getSystemService(InputMethodManager.class).hideSoftInputFromWindow(apiKey.getWindowToken(), 0);
-            Toast.makeText(this, "Ключ сохранён", Toast.LENGTH_SHORT).show();
+            persistApiKey(value);
         });
         keyActions.addView(save, new LinearLayout.LayoutParams(-2, dp(60)));
         TextView getKey = text("Получить личный ключ ↗", 26, ink);
@@ -231,7 +233,7 @@ public final class WeatherSettingsActivity extends Activity {
         searchMessage = text("", 28, muted);
         searchMessage.setVisibility(View.GONE);
         searchMessage.setOnClickListener(v -> {
-            HmcLocationCatalog.ensure(this);
+            WeatherRepository.ensureLocationCatalog(this);
             search();
         });
         content.addView(searchMessage);
@@ -291,7 +293,7 @@ public final class WeatherSettingsActivity extends Activity {
         });
         setContentView(root);
         configurePopup();
-        HmcLocationCatalog.ensure(this);
+        WeatherRepository.ensureLocationCatalog(this);
         updateControls();
         search();
     }
@@ -310,6 +312,26 @@ public final class WeatherSettingsActivity extends Activity {
         }
         states.addState(new int[0], shape(surface, 4));
         return new RippleDrawable(ColorStateList.valueOf(0x4445aea1), states, null);
+    }
+
+    private Button keyButton(String label) {
+        Button button = new Button(this);
+        button.setBackground(actionBackground(false));
+        button.setStateListAnimator(null);
+        button.setTextColor(ink);
+        button.setPadding(dp(24), 0, dp(24), 0);
+        button.setText(label);
+        button.setTextSize(26);
+        button.setAllCaps(false);
+        return button;
+    }
+
+    private void persistApiKey(String value) {
+        WeatherConfig.apiKey(this, value);
+        updateControls();
+        apiKey.clearFocus();
+        getSystemService(InputMethodManager.class).hideSoftInputFromWindow(apiKey.getWindowToken(), 0);
+        Toast.makeText(this, value.isEmpty() ? "Ключ удалён" : "Ключ сохранён", Toast.LENGTH_SHORT).show();
     }
 
     private Button sourceButton(WeatherSource source) {
@@ -335,7 +357,7 @@ public final class WeatherSettingsActivity extends Activity {
         button.setOnClickListener(v -> {
             if (button.isSelected()) return;
             WeatherConfig.source(this, source);
-            HmcLocationCatalog.ensure(this);
+            WeatherRepository.ensureLocationCatalog(this);
             updateControls();
         });
         return button;
@@ -481,6 +503,7 @@ public final class WeatherSettingsActivity extends Activity {
         updating = false;
         boolean usesKey = config.source.provider.requiresApiKey();
         keyControls.setVisibility(usesKey ? View.VISIBLE : View.GONE);
+        deleteKey.setVisibility(config.apiKey.isEmpty() ? View.GONE : View.VISIBLE);
         if (usesKey && keyEditorSource != config.source) {
             keyEditorSource = config.source;
             apiKey.setText(config.apiKey);

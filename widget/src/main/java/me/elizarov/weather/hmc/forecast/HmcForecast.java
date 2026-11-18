@@ -1,4 +1,4 @@
-package me.elizarov.weather.hmc;
+package me.elizarov.weather.hmc.forecast;
 
 import me.elizarov.weather.WeatherCondition;
 

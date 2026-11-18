@@ -4,7 +4,7 @@ import android.app.Instrumentation;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import me.elizarov.weather.hmc.HmcForecastChecks;
+import me.elizarov.weather.hmc.forecast.HmcForecastChecks;
 import me.elizarov.weather.yandex.YandexForecastChecks;
 
 /**

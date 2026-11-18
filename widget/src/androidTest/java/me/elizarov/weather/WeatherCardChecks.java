@@ -10,7 +10,7 @@ import android.widget.TextView;
 import java.time.Instant;
 import java.util.TimeZone;
 
-import me.elizarov.weather.hmc.HmcForecastChecks;
+import me.elizarov.weather.hmc.forecast.HmcForecastChecks;
 import me.elizarov.weather.yandex.YandexForecastChecks;
 
 final class WeatherCardChecks {

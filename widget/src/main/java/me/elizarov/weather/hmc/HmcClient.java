@@ -7,23 +7,24 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-final class HmcClient {
+public final class HmcClient {
     private HmcClient() {
     }
 
-    static String stationForPath(String path) throws Exception {
-        if (!path.matches("[a-zA-Z0-9_./%~-]+") || path.contains("..") || path.startsWith("/"))
-            throw new IllegalArgumentException("Invalid HMC city path");
-        String page = request("https://meteoinfo.ru/forecasts/" + path, null);
-        Matcher rss = Pattern.compile("rss/forecasts/index\\.php\\?s=([0-9]{5})(?![0-9])").matcher(page);
-        if (!rss.find()) throw new IllegalArgumentException("City has no supported RSS feed");
-        return rss.group(1);
+    public static String cityPage(String path) throws Exception {
+        return request("https://meteoinfo.ru/forecasts" + (path.isEmpty() ? "" : "/" + path), null);
     }
 
-    static String request(String address, String body) throws Exception {
+    public static String forecast(String station) throws Exception {
+        return request("https://meteoinfo.ru/rss/forecasts/index.php?s=" + station, null);
+    }
+
+    public static String nearbyStation(String form) throws Exception {
+        return request("https://meteoinfo.ru/hmc-output/forecast/tab_0.php", form);
+    }
+
+    private static String request(String address, String body) throws Exception {
         long began = BuildConfig.DEBUG ? android.os.SystemClock.elapsedRealtime() : 0;
         HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
         connection.setConnectTimeout(10000);
