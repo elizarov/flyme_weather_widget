@@ -14,8 +14,8 @@ android {
         applicationId = "me.elizarov.weather"
         minSdk = 30
         targetSdk = 30
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
         testInstrumentationRunner = "me.elizarov.weather.WidgetSmoke"
     }
     sourceSets.getByName("main").res.srcDir("../local-assets/generated/widget-res")

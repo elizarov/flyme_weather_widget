@@ -25,6 +25,10 @@ final class SourceChecks {
                     throw new AssertionError("Source did not persist");
                 Thread.sleep(50);
             }
+            test.runOnMainSync(() -> {
+                boolean keyShown = activity.getWindow().getDecorView().findViewWithTag("api_key_controls").isShown();
+                if (keyShown != source.provider.requiresApiKey()) throw new AssertionError("Wrong key panel for " + source);
+            });
             WeatherConfig after = WeatherConfig.read(context);
             if (!after.cityPath.equals(before.cityPath) || !after.cityName.equals(before.cityName) || after.automatic != before.automatic)
                 throw new AssertionError("Source switch changed the HMC city or automatic mode");

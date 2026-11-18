@@ -30,13 +30,19 @@ final class SettingsChecks {
             require(label.getHeight() == source.getHeight(), "source label and choices share vertical bounds");
             require(source.getLeft() - label.getRight() >= 36, "larger source-selector gap");
             Button hmc = source.findViewWithTag("source_hmc");
+            Button openMeteo = source.findViewWithTag("source_openmeteo");
             Button yandex = source.findViewWithTag("source_yandex");
             require(hmc.getText().toString().equals("Гидрометцентр\nдень/ночь"), "HMC caption");
             require(yandex.getText().toString().equals("Яндекс Погода\nпо часам"), "Yandex caption");
-            require(Math.abs(hmc.getWidth() - yandex.getWidth()) <= 1
-                    && hmc.getLineCount() == 2 && yandex.getLineCount() == 2, "equal two-line buttons");
-            require(hmc.isSelected() == (WeatherConfig.read(context).source == WeatherSource.HMC)
-                    && hmc.isSelected() != yandex.isSelected(), "saved source selected");
+            require(openMeteo.getText().toString().equals("Open-Meteo\nпо часам"), "Open-Meteo caption");
+            require(source.getChildAt(0) == hmc && source.getChildAt(1) == openMeteo && source.getChildAt(2) == yandex,
+                    "HMC, Open-Meteo, Yandex in order");
+            for (WeatherSource candidate : WeatherSource.values()) {
+                Button choice = source.findViewWithTag("source_" + candidate.provider.id);
+                require(Math.abs(choice.getWidth() - hmc.getWidth()) <= 1 && choice.getLineCount() == 2,
+                        "equal two-line buttons");
+                require(choice.isSelected() == (WeatherConfig.read(context).source == candidate), "saved source selected");
+            }
             require(root.findViewWithTag("version") == null, "version removed from header");
             TextView title = root.findViewWithTag("settings_title");
             View back = root.findViewWithTag("settings_back");

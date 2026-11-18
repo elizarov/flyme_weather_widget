@@ -44,7 +44,8 @@ final class WeatherCardChecks {
         try {
             TimeZone.setDefault(TimeZone.getTimeZone("Europe/Moscow"));
             HmcForecastChecks.checkPeriods();
-            YandexForecastChecks.checkCaptions();
+            require(HourlyForecastProvider.hourCaption(time("2026-11-18T00:00:00Z"), time("2026-11-17T21:00:00Z")).equals("3:00"), "same local date");
+            require(HourlyForecastProvider.hourCaption(time("2026-11-17T23:00:00Z"), time("2026-11-17T20:00:00Z")).equals("2:00 +1"), "future card tomorrow");
             long fetched = time("2026-11-17T09:45:00Z"), boundary = time("2026-11-17T10:00:00Z");
             require(HourClock.next(fetched) == boundary, "12:45 fetch schedules 13:00");
             hmc.edit().putLong("fetched_at", fetched).commit();
@@ -83,6 +84,27 @@ final class WeatherCardChecks {
                 equal(yandex, R.id.weather_credit, "Данные сервиса Яндекс Погода");
                 geometry(yandex);
                 require(daytime.findViewById(R.id.weather_first_card).getWidth() == yandex.findViewById(R.id.weather_first_card).getWidth(), "identical provider geometry");
+                WeatherConfig.settings(c).edit().putString("source", "openmeteo").commit();
+                WeatherConfig config = WeatherConfig.read(c);
+                require(config.source == WeatherSource.OPEN_METEO && config.source.provider.canFetch(config),
+                        "Open-Meteo works without credentials");
+                SharedPreferences openMeteo = config.source.provider.cache(c);
+                long start = time("2026-11-17T20:00:00Z") / 1000;
+                String json = "{\"hourly\":{\"time\":[" + start + "," + (start + 10800)
+                        + "],\"temperature_2m\":[-3.7,2.6],\"weather_code\":[71,0],\"is_day\":[1,0]}}";
+                openMeteo.edit().clear().putString("config_key", config.key).putString("forecast", json).commit();
+                long now = time("2026-11-17T20:59:00Z");
+                View open = render(c, now, true);
+                equal(open, R.id.weather_first_caption, "23:00");
+                equal(open, R.id.weather_second_caption, "2:00 +1");
+                equal(open, R.id.weather_first_temperature, "-4°");
+                equal(open, R.id.weather_second_temperature, "+3°");
+                equal(open, R.id.weather_credit, "Данные Open-Meteo");
+                WeatherCards cards = config.source.provider.cards(c, config, now);
+                require(cards.first.icon.equals("ovc_-sn") && cards.second.icon.equals("skc_n"), "WMO code and day/night icons");
+                require(config.source.provider.cards(c, config, now + 60000).first.temperature == null,
+                        "missing hourly sample never reuses an older temperature");
+                openMeteo.edit().clear().commit();
                 TimeZone.setDefault(TimeZone.getTimeZone("America/Los_Angeles"));
                 View west = render(c, time("2027-01-01T02:30:00Z"), true);
                 equal(west, R.id.appwidget_data_month, "12");

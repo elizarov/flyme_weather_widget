@@ -1,6 +1,7 @@
 package me.elizarov.weather.yandex;
 
 import me.elizarov.weather.LocationPolicy;
+import me.elizarov.weather.ForecastHttp;
 
 import org.json.JSONObject;
 
@@ -43,21 +44,9 @@ final class YandexClient {
             int status = c.getResponseCode();
             if (status != 200)
                 throw new YandexFailure(status == 401 || status == 403 ? "auth" : status == 429 ? "quota" : "network");
-            String result;
-            try (java.io.InputStream in = c.getInputStream(); java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream()) {
-                byte[] buffer = new byte[4096];
-                int count;
-                while ((count = in.read(buffer)) != -1) {
-                    if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
-                    bytes.write(buffer, 0, count);
-                    if (bytes.size() > 262144) throw new YandexFailure("response");
-                }
-                result = bytes.toString("UTF-8");
-            }
+            String result = ForecastHttp.read(c);
             if (new JSONObject(result).optJSONArray("errors") != null)
                 throw new YandexFailure("api");
-            if (YandexForecast.at(result, System.currentTimeMillis()) == null)
-                throw new YandexFailure("forecast");
             return result;
         } finally {
             c.disconnect();

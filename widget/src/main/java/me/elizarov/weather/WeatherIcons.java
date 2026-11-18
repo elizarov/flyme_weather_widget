@@ -5,7 +5,7 @@ import android.content.Context;
 import java.util.Locale;
 
 /**
- * Both providers use the same official Yandex artwork, without recolouring it.
+ * All providers use the same official Yandex artwork, without recolouring it.
  */
 public final class WeatherIcons {
     private WeatherIcons() {

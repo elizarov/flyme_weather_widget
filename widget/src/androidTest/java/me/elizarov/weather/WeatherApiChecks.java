@@ -24,6 +24,7 @@ final class WeatherApiChecks {
         require(RefreshPolicy.recordAttempt(isolated, "point-b", fetched + 1000), "location change may refresh within hour");
         require(RefreshPolicy.recordAttempt(isolated, "point-b", boundary), "next calendar hour is allowed");
         isolated.edit().clear().commit();
+        StationCoordinatesChecks.run(c, fetched);
         YandexForecastChecks.run(c);
         HmcForecastChecks.checkConditions();
         HmcForecastChecks.checkLocationForm();

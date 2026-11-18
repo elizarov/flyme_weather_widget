@@ -319,7 +319,7 @@ public final class WeatherSettingsActivity extends Activity {
         button.setSingleLine(false);
         button.setLetterSpacing(0);
         button.setTypeface(Typeface.DEFAULT);
-        button.setTextSize(34);
+        button.setTextSize(30);
         button.setTextColor(ink);
         button.setGravity(Gravity.CENTER);
         button.setPadding(dp(8), 0, dp(8), 0);
@@ -329,7 +329,7 @@ public final class WeatherSettingsActivity extends Activity {
         SpannableString label = new SpannableString(title + "\n" + source.periodCaption);
         int flags = Spanned.SPAN_EXCLUSIVE_EXCLUSIVE;
         label.setSpan(new TypefaceSpan(MEDIUM), 0, title.length(), flags);
-        label.setSpan(new RelativeSizeSpan(26f / 34f), title.length() + 1, label.length(), flags);
+        label.setSpan(new RelativeSizeSpan(26f / 30f), title.length() + 1, label.length(), flags);
         label.setSpan(new ForegroundColorSpan(muted), title.length() + 1, label.length(), flags);
         button.setText(label);
         button.setOnClickListener(v -> {

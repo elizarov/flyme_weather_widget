@@ -60,6 +60,24 @@ public enum WeatherCondition {
         return BY_YANDEX_CODE.getOrDefault(code, UNKNOWN);
     }
 
+    public static WeatherCondition fromWmo(int code) {
+        return switch (code) {
+            case 0 -> CLEAR;
+            case 1 -> PARTLY_CLOUDY;
+            case 2 -> CLOUDY;
+            case 3 -> OVERCAST;
+            case 45, 48 -> FOG;
+            case 51, 53, 55, 56, 57, 61, 80 -> LIGHT_RAIN;
+            case 63, 66, 67, 81 -> RAIN;
+            case 65, 82 -> HEAVY_RAIN;
+            case 71, 77, 85 -> LIGHT_SNOW;
+            case 73 -> SNOW;
+            case 75, 86 -> SNOWFALL;
+            case 95, 96, 99 -> THUNDERSTORM;
+            default -> UNKNOWN;
+        };
+    }
+
     public static WeatherCondition fromHmc(String description) {
         String normalized = description.toLowerCase(Locale.ROOT).replace('ё', 'е');
         for (WeatherCondition condition : CONDITIONS) {

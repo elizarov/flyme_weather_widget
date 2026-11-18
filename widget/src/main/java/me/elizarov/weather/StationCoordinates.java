@@ -1,7 +1,4 @@
-package me.elizarov.weather.yandex;
-
-import me.elizarov.weather.LocationPolicy;
-import me.elizarov.weather.WeatherConfig;
+package me.elizarov.weather;
 
 import android.content.ContentValues;
 import android.content.Context;
@@ -23,11 +20,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 /** Resolves WMO station IDs and remembers the coordinates independently of forecast data. */
-final class YandexStationCoordinates extends SQLiteOpenHelper {
+final class StationCoordinates extends SQLiteOpenHelper {
     private static final String ENDPOINT = "https://oscar.wmo.int/surface/rest/api/search/station?wigosId=";
     static final long RECHECK_INTERVAL = TimeUnit.DAYS.toMillis(30);
     private static final LocationPolicy.Coordinates DEFAULT_COORDINATES = new LocationPolicy.Coordinates(55.833, 37.617);
-    private static YandexStationCoordinates instance;
+    private static StationCoordinates instance;
 
     private final StationLookup lookup;
     private final Object refreshLock = new Object();
@@ -46,15 +43,15 @@ final class YandexStationCoordinates extends SQLiteOpenHelper {
         }
     }
 
-    YandexStationCoordinates(Context context, String database, StationLookup lookup) {
+    StationCoordinates(Context context, String database, StationLookup lookup) {
         super(context, database, null, 1);
         this.lookup = lookup;
     }
 
-    private static synchronized YandexStationCoordinates database(Context context) {
+    private static synchronized StationCoordinates database(Context context) {
         if (instance == null) {
-            instance = new YandexStationCoordinates(context.getApplicationContext(), "station-coordinates.db",
-                    YandexStationCoordinates::download);
+            instance = new StationCoordinates(context.getApplicationContext(), "station-coordinates.db",
+                    StationCoordinates::download);
         }
         return instance;
     }
