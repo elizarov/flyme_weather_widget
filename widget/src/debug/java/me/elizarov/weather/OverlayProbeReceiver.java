@@ -29,23 +29,21 @@ public final class OverlayProbeReceiver extends BroadcastReceiver {
                 status.put("auto_location", config.automatic);
                 status.put("default_city", config.cityName);
                 status.put("default_path", config.cityPath);
-                android.content.SharedPreferences p = WeatherRepository.prefs(context);
-                for (String field : new String[]{"station", "located_station", "mode", "error", "conditions_error"})
+                ForecastProvider<?> provider = config.source.provider;
+                android.content.SharedPreferences p = provider.cache(context);
+                status.put("source", provider.id);
+                status.put("station", p.getString("target", ""));
+                for (String field : new String[]{"located_station", "mode", "error", "conditions_error"})
                     status.put(field, p.getString(field, ""));
                 status.put("fine_location_permission", context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
                         == android.content.pm.PackageManager.PERMISSION_GRANTED);
                 status.put("background_location_permission", context.checkSelfPermission(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                         == android.content.pm.PackageManager.PERMISSION_GRANTED);
-                ForecastWindow window = ForecastWindow.at(System.currentTimeMillis());
-                status.put("day_conditions", WeatherConditions.get(context, window.day, false));
-                status.put("night_conditions", WeatherConditions.get(context, window.nightEnd, true));
-                status.put("fetched_at", p.getLong("fetched_at", 0));
-                WeatherForecast forecast = WeatherRepository.forTime(context, java.time.LocalDate.now(), java.time.LocalTime.now().getHour());
-                if (forecast != null) {
-                    status.put("city", forecast.city);
-                    status.put("day", forecast.day);
-                    status.put("night", forecast.night);
-                }
+                WeatherCards cards = provider.cards(context, config, System.currentTimeMillis());
+                status.put("city", cards.city);
+                status.put("fetched_at", provider.lastUpdate(p, config));
+                status.put("first", cardStatus(cards.first));
+                status.put("second", cardStatus(cards.second));
                 setResultCode(0);
                 setResultData(status.toString());
                 return;
@@ -89,5 +87,10 @@ public final class OverlayProbeReceiver extends BroadcastReceiver {
             setResultCode(1);
             setResultData(error.toString());
         }
+    }
+
+    private static JSONObject cardStatus(WeatherCards.Card card) throws org.json.JSONException {
+        return new JSONObject().put("caption", card.caption).put("temperature", card.temperatureText())
+                .put("conditions", card.description);
     }
 }

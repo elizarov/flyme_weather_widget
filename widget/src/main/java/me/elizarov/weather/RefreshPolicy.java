@@ -1,21 +1,25 @@
 package me.elizarov.weather;
 
+import android.content.SharedPreferences;
+
 final class RefreshPolicy {
-    static final long FORECAST = 3600000L, LOCATION = 900000L, RETRY = 600000L, MANUAL_GUARD = 20000L;
     static final float MOVED_METERS = 10000;
 
     private RefreshPolicy() {
     }
 
-    static long nextCheck(long now, boolean automatic) {
-        return now + (automatic ? LOCATION : FORECAST);
+    static boolean hasFreshForecast(SharedPreferences cache, String target, long now) {
+        return cache.contains("forecast") && target.equals(cache.getString("target", ""))
+                && HourClock.same(cache.getLong("fetched_at", 0), now);
     }
 
-    static long nextCheck(long now, boolean automatic, boolean conditionsFailed) {
-        return conditionsFailed ? now + RETRY : nextCheck(now, automatic);
+    static long retryDelay(SharedPreferences cache, long now) {
+        return HourClock.same(cache.getLong("attempted_at", 0), now) ? HourClock.next(now) - now : 0;
     }
 
-    static boolean needsForecast(long now, long fetched, boolean force, boolean sameStation, boolean sameConfig, boolean hasXml) {
-        return force || !sameStation || !sameConfig || !hasXml || now - fetched >= FORECAST;
+    static synchronized boolean recordAttempt(SharedPreferences cache, String target, long now) {
+        if (retryDelay(cache, now) > 0 && target.equals(cache.getString("attempted_target", "")))
+            return false;
+        return cache.edit().putLong("attempted_at", now).putString("attempted_target", target).commit();
     }
 }

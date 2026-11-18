@@ -29,8 +29,10 @@ def verify(aapt2, apksigner, widget, overlay, test):
         names = archive.namelist()
         if any(name.endswith((".ttf", ".otf", "/spb.xml", "/spb-details.html")) for name in names):
             raise ValueError("Release contains local preview fonts or test fixtures")
+        if any("preview_flyme_screen" in name for name in names):
+            raise ValueError("Release contains the local car screenshot")
         dex = b"".join(archive.read(name) for name in names if re.fullmatch(r"classes\d*\.dex", name))
-        for name in ["PreviewActivity", "IconGalleryActivity", "OverlayProbeReceiver"]:
+        for name in ["PreviewActivity", "IconGalleryActivity", "OverlayProbeReceiver", "FlymePreviewBackdrop"]:
             if ("Lme/elizarov/weather/" + name + ";").encode() in dex:
                 raise ValueError(f"Release contains development class {name}")
     print("PASS: release APKs are signed with one key, not debuggable, and contain no development classes, preview fonts or test fixtures.")

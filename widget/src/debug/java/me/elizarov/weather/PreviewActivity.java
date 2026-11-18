@@ -13,6 +13,7 @@ import android.widget.TextView;
  * Local full-display preview; uses the same RemoteViews as the real widget.
  */
 public final class PreviewActivity extends Activity {
+    private android.graphics.Bitmap backdrop;
     private final android.os.Handler clock = new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable minute = new Runnable() {
         @Override
@@ -32,6 +33,12 @@ public final class PreviewActivity extends Activity {
     public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().getDecorView().setSystemUiVisibility(5894);
+        int skin = getResources().getIdentifier("preview_flyme_screen", "drawable", getPackageName());
+        if (skin != 0) {
+            android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+            options.inScaled = false;
+            backdrop = android.graphics.BitmapFactory.decodeResource(getResources(), skin, options);
+        }
     }
 
     @Override
@@ -63,6 +70,8 @@ public final class PreviewActivity extends Activity {
         long now = getIntent().getLongExtra("time_millis", System.currentTimeMillis());
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(light ? Color.rgb(28, 28, 28) : Color.rgb(230, 230, 230));
+        if (backdrop != null && light && !getIntent().getBooleanExtra("plain_background", false))
+            root.addView(new FlymePreviewBackdrop(this, backdrop, now), new FrameLayout.LayoutParams(-1, -1));
         View widget = WidgetRenderer.views(this, now, light).apply(this, root);
         // Generic emulator has no OEM system font family. Preview only: use the
         // optional local font. The real widget uses OEM family names.

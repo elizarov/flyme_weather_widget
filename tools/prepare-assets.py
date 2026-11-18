@@ -52,7 +52,7 @@ def prepare(launcher, weather, aapt2):
     layout = try_xml(resources, resources.xml_paths("layout", ["weather_app_widget_l946_new", "weather_app_widget_light_l946_new",
                       "weather_app_widget", "weather_app_widget_light"], r"weather.*widget|widget.*weather"),
                      check=lambda root: required <= {n.get(attr + "id", "").rsplit("/", 1)[-1] for n in root.iter()}, prune_weather=True)
-    layout[1].set(attr + "layout_height", "112px")
+    layout[1].set(attr + "layout_height", "160px")
     divider_name = "appwidget_data_divider"
     for node in layout.iter():
         if node.get(attr + "id", "").endswith("/appwidget_data_month_divide"):
@@ -61,6 +61,7 @@ def prepare(launcher, weather, aapt2):
     ui = ET.parse(ROOT / "widget/ui/weather.xml").getroot()
     layout[1].append(ui[0])
     layout.append(ui[1])
+    layout.append(ui[2])
     write_xml(layout, generated / "widget-res/layout/weather.xml")
     divider = try_xml(resources, resources.xml_paths("drawable", [divider_name, "appwidget_data_divider", "appwidget_data_divider_light"], r"appwidget.*divider"))
     for name, color in [("appwidget_data_divider", "#000000"), ("appwidget_data_divider_light", "#ffffff")]:

@@ -85,7 +85,7 @@ class AssetsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder, patch.object(prepare, "ROOT", Path(folder)), patch.object(prepare, "ApkResources", FakeApk):
             root = Path(folder)
             (root / "widget/ui").mkdir(parents=True)
-            (root / "widget/ui/weather.xml").write_text("<weather-ui><LinearLayout/><LinearLayout/></weather-ui>")
+            (root / "widget/ui/weather.xml").write_text("<weather-ui><LinearLayout/><LinearLayout/><LinearLayout/></weather-ui>")
             apk = root / "synthetic.apk"
             apk.write_bytes(b"synthetic")
             prepare.prepare(apk, apk, Path("aapt2"))

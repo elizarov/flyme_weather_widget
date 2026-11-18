@@ -25,11 +25,12 @@ public final class IconGalleryActivity extends Activity {
         position.topMargin = 140;
         root.addView(content, position);
         content.addView(label("Иконки погоды", 56));
-        int[] icons = {R.drawable.weather_sun, R.drawable.weather_moon, R.drawable.weather_partly,
-                R.drawable.weather_cloud, R.drawable.weather_rain, R.drawable.weather_snow,
-                R.drawable.weather_sleet, R.drawable.weather_thunder, R.drawable.weather_fog, R.drawable.weather_unknown};
+        String[] codes = {"skc_d", "skc_n", "bkn_d", "ovc", "ovc_ra", "ovc_sn", "ovc_ra_sn", "ovc_ts_ra", "fg_d", "bkn_n"};
+        int[] icons = new int[codes.length];
+        for (int i = 0; i < codes.length; i++)
+            icons[i] = WeatherIcons.resource(this, codes[i], true);
         String[] names = {"Ясно", "Ясная ночь", "Переменная\nоблачность", "Облачно", "Дождь",
-                "Снег", "Дождь со снегом", "Гроза", "Туман", "Нет данных"};
+                "Снег", "Дождь со снегом", "Гроза", "Туман", "Облачная ночь"};
         for (int start = 0; start < icons.length; start += 5) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -47,7 +48,7 @@ public final class IconGalleryActivity extends Activity {
         controls.setOrientation(LinearLayout.HORIZONTAL);
         controls.addView(tile(R.drawable.ic_settings, "Настройки"), new LinearLayout.LayoutParams(360, 240));
         controls.addView(tile(R.drawable.ic_back, "Назад"), new LinearLayout.LayoutParams(360, 240));
-        controls.addView(tile(R.drawable.ic_date_arrow, "Переход даты"), new LinearLayout.LayoutParams(360, 240));
+        controls.addView(tile(R.drawable.ic_open_external, "Сайт источника"), new LinearLayout.LayoutParams(360, 240));
         content.addView(controls);
         setContentView(root);
     }
@@ -58,7 +59,7 @@ public final class IconGalleryActivity extends Activity {
         tile.setGravity(Gravity.CENTER);
         ImageView icon = new ImageView(this);
         icon.setImageResource(resource);
-        icon.setColorFilter(0xfff2f2f2);
+
         tile.addView(icon, new LinearLayout.LayoutParams(128, 128));
         TextView title = label(name, 32);
         title.setGravity(Gravity.CENTER);

@@ -15,7 +15,7 @@ public final class WeatherWidgetProvider extends AppWidgetProvider {
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
         if (WeatherRepository.REFRESH.equals(intent.getAction()))
-            WeatherRepository.schedule(context, true);
+            WeatherRepository.schedule(context);
         // Widget lifecycle, time/date/locale changes, and our explicit minute alarm.
         refresh(context);
     }
@@ -46,6 +46,6 @@ public final class WeatherWidgetProvider extends AppWidgetProvider {
         // RTC (not RTC_WAKEUP): do not wake a sleeping car solely to update a clock.
         AlarmManager alarms = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         alarms.setExact(AlarmManager.RTC, (now / 60000 + 1) * 60000, tickIntent(context));
-        WeatherRepository.schedule(context, false);
+        WeatherRepository.schedule(context);
     }
 }

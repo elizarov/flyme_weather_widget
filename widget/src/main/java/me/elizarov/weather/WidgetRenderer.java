@@ -49,58 +49,51 @@ public final class WidgetRenderer {
         }
         views.setInt(R.id.appwidget_data_month_divide, "setBackgroundResource",
                 lightText ? R.drawable.appwidget_data_divider_light : R.drawable.appwidget_data_divider);
-        ForecastWindow window = ForecastWindow.at(now);
-        java.util.List<WeatherForecast> forecasts = WeatherRepository.forecasts(context);
-        WeatherForecast day = WeatherForecast.forDate(forecasts, window.day);
-        WeatherForecast night = WeatherForecast.forDate(forecasts, window.nightEnd);
-        String dayText = day == null ? "—" : day.day + "°C";
-        String[] range = window.nightRange().split("→", 2);
-        String nightText = night == null ? "—" : night.night + "°C";
-        views.setTextViewText(R.id.weather_day, dayText);
-        views.setTextViewText(R.id.weather_night, nightText);
-        // Fit negative temperatures and month boundaries without colliding with the weekday.
-        android.text.TextPaint paint = new android.text.TextPaint();
-        paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.create("Flyme Sans VF", android.graphics.Typeface.NORMAL), 500, false));
-        float size = 48;
-        paint.setTextSize(size);
-        float width = android.text.Layout.getDesiredWidth("день", paint)
-                + android.text.Layout.getDesiredWidth(dayText, paint) + android.text.Layout.getDesiredWidth(nightText, paint);
-        size = Math.min(48, 256 * 48 / Math.max(1, width)); // Identical 12 px label/temperature gaps.
-        views.setTextViewTextSize(R.id.weather_day, android.util.TypedValue.COMPLEX_UNIT_PX, size);
-        views.setTextViewTextSize(R.id.weather_day_label, android.util.TypedValue.COMPLEX_UNIT_PX, size);
-        views.setTextViewTextSize(R.id.weather_night, android.util.TypedValue.COMPLEX_UNIT_PX, size);
-        views.setTextViewTextSize(R.id.weather_night_label, android.util.TypedValue.COMPLEX_UNIT_PX, size);
-        paint.setTextSize(size);
-        float labelWidth = (float) Math.ceil(android.text.Layout.getDesiredWidth("ночь", paint));
-        views.setImageViewBitmap(R.id.weather_night_dates, NightRangeRenderer.render(context, range[0], range[1], labelWidth, (float) Math.ceil(android.text.Layout.getDesiredWidth(nightText, paint)), color));
-        views.setContentDescription(R.id.weather_night_dates, window.nightRange());
-        String dayCondition = WeatherConditions.get(context, window.day, false);
-        String nightCondition = WeatherConditions.get(context, window.nightEnd, true);
-        views.setImageViewResource(R.id.weather_day_icon, day == null ? R.drawable.weather_unknown : WeatherIcons.forCondition(dayCondition, false));
-        views.setImageViewResource(R.id.weather_night_icon, night == null ? R.drawable.weather_unknown : WeatherIcons.forCondition(nightCondition, true));
         WeatherConfig config = WeatherConfig.read(context);
-        views.setTextViewText(R.id.appwidget_city, day != null ? day.city : night != null ? night.city : config.cityName);
-        String details = (day == null ? "Дневной прогноз недоступен." : "Днём " + day.day + " градусов. " + dayCondition + ".")
-                + (night == null ? " Ночной прогноз недоступен." : " Ночью " + night.night + " градусов. " + nightCondition + ".")
-                + " " + window.description() + ". Гидрометцентр России. Нажмите, чтобы обновить.";
-        if (WeatherRepository.prefs(context).contains("error"))
-            details += " Сохранённые данные; ошибка обновления.";
-        views.setContentDescription(R.id.weather_forecasts, details);
-        for (int id : new int[]{R.id.weather_day, R.id.weather_day_label, R.id.weather_night, R.id.weather_night_label,
-                R.id.appwidget_city}) {
-            views.setTextColor(id, color);
-        }
-        for (int id : new int[]{R.id.weather_day_icon, R.id.weather_night_icon, R.id.weather_settings}) {
-            views.setInt(id, "setColorFilter", color);
-        }
-        views.setOnClickPendingIntent(R.id.weather_forecasts, PendingIntent.getBroadcast(context, 2,
-                new Intent(context, WeatherWidgetProvider.class).setAction(WeatherRepository.REFRESH),
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+        ForecastProvider<?> provider = config.source.provider;
+        WeatherCards cards = provider.cards(context, config, now);
+        renderCard(context, views, cards.first, true, lightText, color);
+        renderCard(context, views, cards.second, false, lightText, color);
+        views.setTextViewText(R.id.appwidget_city, cards.city);
+        views.setTextColor(R.id.appwidget_city, color);
+        views.setTextViewText(R.id.weather_credit, provider.credit);
+        views.setTextColor(R.id.weather_credit, color);
+        views.setInt(R.id.weather_settings, "setColorFilter", color);
+        views.setInt(R.id.weather_website, "setColorFilter", color);
+        views.setOnClickPendingIntent(R.id.weather_forecasts, viewsRefresh(context));
         PendingIntent settings = PendingIntent.getBroadcast(context, lightText ? 3 : 4,
                 new Intent(context, SettingsLaunchReceiver.class).putExtra("light_text", lightText),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         views.setOnClickPendingIntent(R.id.weather_settings, settings);
         views.setOnClickPendingIntent(R.id.appwidget_city, settings);
+        String url = provider.website(context, config);
+        PendingIntent website = url.isEmpty() ? null : PendingIntent.getBroadcast(context, 5,
+                new Intent(context, SettingsLaunchReceiver.class).putExtra("url", url),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        views.setFloat(R.id.weather_website, "setAlpha", url.isEmpty() ? 0.4f : 1f);
+        views.setOnClickPendingIntent(R.id.weather_website, website);
+        views.setOnClickPendingIntent(R.id.weather_credit, website);
         return views;
+    }
+
+    private static void renderCard(Context c, RemoteViews views, WeatherCards.Card card,
+                                   boolean first, boolean lightText, int color) {
+        int temperature = first ? R.id.weather_first_temperature : R.id.weather_second_temperature;
+        int caption = first ? R.id.weather_first_caption : R.id.weather_second_caption;
+        int image = first ? R.id.weather_first_icon : R.id.weather_second_icon;
+        int container = first ? R.id.weather_first_card : R.id.weather_second_card;
+        views.setTextViewText(temperature, card.temperatureText());
+        views.setImageViewBitmap(caption, CaptionRenderer.render(c, card.caption, color));
+        views.setContentDescription(caption, card.caption);
+        views.setTextColor(temperature, color);
+        int icon = WeatherIcons.resource(c, card.icon, lightText);
+        views.setViewVisibility(image, icon == 0 ? android.view.View.INVISIBLE : android.view.View.VISIBLE);
+        if (icon != 0) views.setImageViewResource(image, icon);
+        views.setContentDescription(container, card.caption + ": " + card.temperatureText() + ". " + card.description);
+    }
+
+    private static PendingIntent viewsRefresh(Context context) {
+        return PendingIntent.getBroadcast(context, 2, new Intent(context, WeatherWidgetProvider.class).setAction(WeatherRepository.REFRESH),
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
     }
 }

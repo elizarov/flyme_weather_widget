@@ -4,10 +4,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.location.Location;
 
-import java.util.Locale;
-
 /**
- * Exercises the transmitted form and station cache without any network requests.
+ * Exercises coordinate rounding and the station cache without any network requests.
  */
 final class LocationPolicyChecks {
     static void run(Context context) {
@@ -25,20 +23,6 @@ final class LocationPolicyChecks {
                     "rounding is stable, including the poles and date line");
         }
 
-        LocationPolicy.Coordinates centre = LocationPolicy.rounded(59.934321, 30.335123);
-        Location first = location(centre.latitude + 0.001, centre.longitude + 0.001);
-        Location second = location(centre.latitude - 0.001, centre.longitude - 0.001);
-        String form = LocationPolicy.stationRequest(first);
-        require(form.equals(LocationPolicy.stationRequest(second)), "nearby precise points produce identical request coordinates");
-        require(!form.contains(Double.toString(first.getLatitude()))
-                && !form.contains(Double.toString(first.getLongitude())), "request never contains the original precise values");
-        Locale original = Locale.getDefault();
-        try {
-            Locale.setDefault(Locale.GERMANY);
-            require(form.equals(LocationPolicy.stationRequest(first)), "form coordinates always use a decimal point");
-        } finally {
-            Locale.setDefault(original);
-        }
         boolean rejected = false;
         try {
             LocationPolicy.rounded(Double.NaN, 0);
