@@ -31,6 +31,9 @@ import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
+import android.view.WindowManager;
+import android.view.WindowMetrics;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 
@@ -41,8 +44,11 @@ import java.util.List;
  * Weather source, API key and location settings persist locally.
  */
 public final class WeatherSettingsActivity extends Activity {
+    private static final String SOURCE_URL = "https://github.com/elizarov/flyme_weather_widget";
     static final int POPUP_WIDTH_DP = 1160;
-    static final int POPUP_HEIGHT_DP = 900;
+    static final int POPUP_HEIGHT_DP = 1032;
+    private static final int TOP_GAP_DP = 48;
+    private static final int KEYBOARD_GAP_DP = 24;
     private static final int ACCENT = 0xff45aea1;
     private static final Typeface MEDIUM = Typeface.create("sans-serif-medium", Typeface.NORMAL);
     private int ink, muted, panelColor, surface, activeSurface;
@@ -52,7 +58,8 @@ public final class WeatherSettingsActivity extends Activity {
     private ListView results;
     private Switch automatic;
     private final EnumMap<WeatherSource, Button> sourceButtons = new EnumMap<>(WeatherSource.class);
-    private LinearLayout locationControls, keyControls;
+    private LinearLayout sourceRow, locationOptions, keyControls;
+    private boolean searchingWithKeyboard;
     private EditText apiKey;
     private Button deleteKey;
     private WeatherSource keyEditorSource;
@@ -94,11 +101,13 @@ public final class WeatherSettingsActivity extends Activity {
         back.setContentDescription("Назад");
         back.setOnClickListener(v -> finish());
         header.addView(back, new LinearLayout.LayoutParams(dp(64), dp(64)));
-        TextView title = text("Погода", 48, ink);
+        TextView title = text("Погода", 38, ink);
         title.setTypeface(MEDIUM);
+        title.setIncludeFontPadding(false);
+        title.setPadding(0, dp(2), 0, dp(2));
         title.setTag("settings_title");
         title.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams titlePosition = new LinearLayout.LayoutParams(0, dp(64), 1);
+        LinearLayout.LayoutParams titlePosition = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
         titlePosition.setMarginStart(dp(20));
         header.addView(title, titlePosition);
         try {
@@ -124,8 +133,8 @@ public final class WeatherSettingsActivity extends Activity {
             about.setTranslationY(center - about.getTop() - about.getHeight() / 2f);
         });
         content.addView(header);
-        gap(content, 32);
-        LinearLayout sourceRow = row();
+        gap(content, 16);
+        sourceRow = row();
         TextView sourceLabel = text("Источник", 34, ink);
         sourceLabel.setTag("source_label");
         sourceLabel.setGravity(Gravity.CENTER_VERTICAL);
@@ -191,11 +200,14 @@ public final class WeatherSettingsActivity extends Activity {
         getKey.setGravity(Gravity.CENTER_VERTICAL);
         keyActions.addView(getKey, new LinearLayout.LayoutParams(-2, dp(60)));
         keyControls.addView(keyActions);
-        locationControls = new LinearLayout(this);
+        LinearLayout locationControls = new LinearLayout(this);
         locationControls.setTag("location_controls");
         locationControls.setOrientation(LinearLayout.VERTICAL);
         content.addView(locationControls, new LinearLayout.LayoutParams(-1, 0, 1));
-        content = locationControls;
+        locationOptions = new LinearLayout(this);
+        locationOptions.setOrientation(LinearLayout.VERTICAL);
+        locationControls.addView(locationOptions);
+        content = locationOptions;
         gap(content, 24);
         automatic = new Switch(this);
         styleSwitch();
@@ -220,6 +232,7 @@ public final class WeatherSettingsActivity extends Activity {
         selected.setTag("selected");
         content.addView(selected);
         gap(content, 12);
+        content = locationControls;
         query = new EditText(this);
         query.setTag("search");
         query.setTextSize(30);
@@ -293,6 +306,7 @@ public final class WeatherSettingsActivity extends Activity {
         });
         setContentView(root);
         configurePopup();
+        root.getViewTreeObserver().addOnGlobalLayoutListener(() -> fitKeyboard(root));
         WeatherRepository.ensureLocationCatalog(this);
         updateControls();
         search();
@@ -415,12 +429,26 @@ public final class WeatherSettingsActivity extends Activity {
         logo.setImageResource(R.drawable.ic_github);
         logo.setColorFilter(ink);
         link.addView(logo, new LinearLayout.LayoutParams(dp(30), dp(30)));
-        TextView url = text("https://github.com/elizarov/flyme_weather_widget", 24, ink);
+        TextView url = text(SOURCE_URL, 24, ink);
         url.setPaintFlags(url.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
         LinearLayout.LayoutParams urlPosition = new LinearLayout.LayoutParams(-2, -2);
         urlPosition.setMarginStart(dp(12));
         link.addView(url, urlPosition);
-        link.setOnClickListener(v -> WeatherBrowserActivity.open(this, "https://github.com/elizarov/flyme_weather_widget"));
+        link.setOnClickListener(v -> {
+            Intent browse = new Intent(Intent.ACTION_VIEW, Uri.parse(SOURCE_URL))
+                    .addCategory(Intent.CATEGORY_BROWSABLE)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            // Select a general HTTPS browser even if a GitHub app handles this domain.
+            browse.setSelector(new Intent(Intent.ACTION_VIEW, Uri.parse("https:"))
+                    .addCategory(Intent.CATEGORY_BROWSABLE));
+            try {
+                Bundle options = android.app.ActivityOptions.makeBasic().toBundle();
+                options.putInt("start_windowmode", -1); // Flyme: launch outside mini-window mode.
+                startActivity(browse, options);
+            } catch (android.content.ActivityNotFoundException error) {
+                Toast.makeText(this, "Не найден браузер для открытия ссылки", Toast.LENGTH_SHORT).show();
+            }
+        });
         column.addView(link, new LinearLayout.LayoutParams(-1, dp(64)));
         dialog.setContentView(column);
         dialog.setCanceledOnTouchOutside(true);
@@ -448,18 +476,50 @@ public final class WeatherSettingsActivity extends Activity {
         android.view.Window window = getWindow();
         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
         window.setElevation(dp(24));
+        // WindowManager fits this floating window above the IME. Fitting its content again
+        // would reserve the navigation bar inside the popup on Flyme.
+        window.setDecorFitsSystemWindows(false);
         android.view.WindowManager.LayoutParams position = window.getAttributes();
+        position.setFitInsetsTypes(WindowInsets.Type.systemBars() | WindowInsets.Type.ime());
         if (PreviewPopup.layoutInTask(this, position, dp(POPUP_WIDTH_DP), dp(POPUP_HEIGHT_DP))) {
             window.setAttributes(position);
             return;
         }
         position.width = Math.min(dp(POPUP_WIDTH_DP), Math.max(1, screen.width() - dp(80)));
-        // L946: leave 48 px above the bottom app cards, matching their lower padding.
         position.height = Math.min(dp(POPUP_HEIGHT_DP), Math.max(1, screen.height() - dp(160)));
         position.gravity = Gravity.TOP | Gravity.END;
         position.x = Math.min(dp(512), Math.max(dp(32), (screen.width() - position.width) / 2));
-        position.y = Math.min(dp(180), Math.max(dp(24), screen.height() - position.height - dp(40)));
+        position.y = dp(TOP_GAP_DP);
         window.setAttributes(position);
+    }
+
+    private void fitKeyboard(View root) {
+        WindowInsets insets = root.getRootWindowInsets();
+        if (insets == null) return;
+        WindowMetrics metrics = getWindowManager().getCurrentWindowMetrics();
+        WindowInsets taskInsets = metrics.getWindowInsets();
+        boolean keyboard = insets.isVisible(WindowInsets.Type.ime()) || taskInsets.isVisible(WindowInsets.Type.ime());
+        boolean compact = keyboard && query.hasFocus();
+        if (compact != searchingWithKeyboard) {
+            searchingWithKeyboard = compact;
+            sourceRow.setVisibility(compact ? View.GONE : View.VISIBLE);
+            locationOptions.setVisibility(compact ? View.GONE : View.VISIBLE);
+            updateControls();
+        }
+        WindowManager.LayoutParams position = getWindow().getAttributes();
+        // In the emulator the dialog is already confined to a separate, bounded task.
+        if ((position.gravity & Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK) != Gravity.END) return;
+        int fullHeight = metrics.getBounds().height();
+        int bars = WindowInsets.Type.systemBars();
+        android.graphics.Insets occupied = taskInsets.getInsets(bars | WindowInsets.Type.ime());
+        int topGap = dp(keyboard ? KEYBOARD_GAP_DP : TOP_GAP_DP);
+        int maxHeight = Math.max(1, fullHeight - occupied.top - occupied.bottom - topGap - dp(KEYBOARD_GAP_DP));
+        int height = Math.min(dp(POPUP_HEIGHT_DP), maxHeight);
+        if (position.y != topGap || position.height != height) {
+            position.y = topGap;
+            position.height = height;
+            getWindow().setAttributes(position);
+        }
     }
 
     @Override
@@ -502,7 +562,7 @@ public final class WeatherSettingsActivity extends Activity {
         automatic.setChecked(config.automatic);
         updating = false;
         boolean usesKey = config.source.provider.requiresApiKey();
-        keyControls.setVisibility(usesKey ? View.VISIBLE : View.GONE);
+        keyControls.setVisibility(usesKey && !searchingWithKeyboard ? View.VISIBLE : View.GONE);
         deleteKey.setVisibility(config.apiKey.isEmpty() ? View.GONE : View.VISIBLE);
         if (usesKey && keyEditorSource != config.source) {
             keyEditorSource = config.source;

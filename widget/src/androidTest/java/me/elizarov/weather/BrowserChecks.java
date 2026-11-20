@@ -76,10 +76,10 @@ final class BrowserChecks {
         while (!nextUrl.equals(browser.getIntent().getStringExtra("url")) && android.os.SystemClock.elapsedRealtime() < changedUntil)
             Thread.sleep(50);
         require(nextUrl.equals(browser.getIntent().getStringExtra("url")), "existing browser receives a new location link");
-        test.runOnMainSync(browser::finishAndRemoveTask);
+        test.runOnMainSync(() -> browser.getWindow().getDecorView().findViewWithTag("browser_close").performClick());
         test.runOnMainSync(() -> {
         });
-        require(!preview.isFinishing() && !preview.isDestroyed(), "desktop Close leaves widget alive");
+        require(!preview.isFinishing() && !preview.isDestroyed(), "popup Close leaves widget alive");
         require(preview.getTaskId() == previewTask, "original widget task preserved");
         test.removeMonitor(monitor);
         monitor = test.addMonitor(WeatherBrowserActivity.class.getName(), null, false);
@@ -92,7 +92,7 @@ final class BrowserChecks {
         });
         require(!preview.isFinishing() && !preview.isDestroyed(), "Back leaves widget alive");
         test.removeMonitor(monitor);
-        return "PASS: actual HMC page loaded; bounded popup/WebView, independent browser task, desktop Close and Back preserve widget; zero weather API requests";
+        return "PASS: actual HMC page loaded; bounded popup/WebView, independent browser task, popup Close and Back preserve widget; zero weather API requests";
     }
 
     private static void require(boolean yes, String reason) {

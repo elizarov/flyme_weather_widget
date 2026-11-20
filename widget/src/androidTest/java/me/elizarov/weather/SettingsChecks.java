@@ -48,6 +48,8 @@ final class SettingsChecks {
             View back = root.findViewWithTag("settings_back");
             android.graphics.Rect ink = new android.graphics.Rect();
             title.getPaint().getTextBounds(title.getText().toString(), 0, title.length(), ink);
+            require(title.getHeight() - title.getPaddingTop() - title.getPaddingBottom() >= title.getLayout().getHeight(),
+                    "full title line fits between vertical padding");
             float center = title.getTop() + title.getBaseline() + (ink.top + ink.bottom) / 2f;
             require(Math.abs(back.getY() + back.getHeight() / 2f - center) < 0.6f, "back arrow centered on heading ink");
             root.findViewWithTag("about").performClick();
@@ -69,14 +71,24 @@ final class SettingsChecks {
         try (java.io.FileOutputStream out = new java.io.FileOutputStream(new java.io.File(context.getExternalFilesDir(null), "about.png"))) {
             test.getUiAutomation().takeScreenshot().compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
         }
-        android.app.Instrumentation.ActivityMonitor monitor = test.addMonitor(WeatherBrowserActivity.class.getName(), null, false);
+        java.util.concurrent.BlockingQueue<Intent> launches = new java.util.concurrent.LinkedBlockingQueue<>();
+        Instrumentation.ActivityMonitor monitor = new Instrumentation.ActivityMonitor() {
+            @Override
+            public Instrumentation.ActivityResult onStartActivity(Intent intent) {
+                launches.offer(intent);
+                return new Instrumentation.ActivityResult(android.app.Activity.RESULT_CANCELED, null);
+            }
+        };
+        test.addMonitor(monitor);
         List<AccessibilityNodeInfo> links = popup.findAccessibilityNodeInfosByText("https://github.com/elizarov/flyme_weather_widget");
         AccessibilityNodeInfo link = links.get(0);
         while (link != null && !link.isClickable()) link = link.getParent();
         require(link != null && link.performAction(AccessibilityNodeInfo.ACTION_CLICK), "GitHub link is clickable");
-        android.app.Activity browser = test.waitForMonitorWithTimeout(monitor, 5000);
-        require(browser != null && "https://github.com/elizarov/flyme_weather_widget".equals(browser.getIntent().getStringExtra("url")), "link opens browser at repository URL");
-        test.runOnMainSync(browser::finish);
+        Intent launch = launches.poll(5, java.util.concurrent.TimeUnit.SECONDS);
+        require(launch != null && Intent.ACTION_VIEW.equals(launch.getAction())
+                && "https://github.com/elizarov/flyme_weather_widget".equals(launch.getDataString())
+                && launch.getComponent() == null && (launch.getFlags() & Intent.FLAG_ACTIVITY_NEW_TASK) != 0,
+                "repository link launches an external browser task");
         test.removeMonitor(monitor);
         test.runOnMainSync(activity::finish);
         return "PASS: centered source row/gap, header Info, About version/update/source-code, clickable GitHub browser link";

@@ -12,6 +12,7 @@ import android.view.WindowManager;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 
 /**
@@ -48,7 +49,17 @@ public final class WeatherBrowserActivity extends Activity {
             if (browser != null && browser.canGoBack()) browser.goBack();
             else finish();
         });
-        root.addView(back, new LinearLayout.LayoutParams(-1, 64));
+        LinearLayout toolbar = new LinearLayout(this);
+        int toolbarHeight = Math.round(64 * getResources().getDisplayMetrics().density);
+        toolbar.addView(back, new LinearLayout.LayoutParams(-2, -1));
+        toolbar.addView(new android.widget.Space(this), new LinearLayout.LayoutParams(0, 1, 1));
+        ImageButton close = new ImageButton(this);
+        close.setTag("browser_close");
+        close.setContentDescription("Закрыть браузер");
+        close.setImageResource(R.drawable.ic_close);
+        close.setOnClickListener(v -> finishAndRemoveTask());
+        toolbar.addView(close, new LinearLayout.LayoutParams(toolbarHeight, -1));
+        root.addView(toolbar, new LinearLayout.LayoutParams(-1, toolbarHeight));
         android.widget.ProgressBar progress = new android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(false);
         root.addView(progress, new LinearLayout.LayoutParams(-1, 4));
