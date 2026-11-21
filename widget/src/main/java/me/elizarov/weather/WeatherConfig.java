@@ -8,14 +8,19 @@ public final class WeatherConfig {
     public final String fallbackStation = DEFAULT_STATION;
     public final boolean automatic;
     final WeatherSource source;
+    final boolean showForecast;
+    final int forecastHours;
     public final String cityPath, cityName, key, apiKey;
 
-    private WeatherConfig(boolean automatic, String cityPath, String cityName, WeatherSource source, String apiKey) {
+    private WeatherConfig(boolean automatic, String cityPath, String cityName, WeatherSource source, String apiKey,
+                          boolean showForecast, int forecastHours) {
         this.automatic = automatic;
         this.cityPath = cityPath;
         this.cityName = cityName;
         this.source = source;
         this.apiKey = apiKey;
+        this.showForecast = showForecast;
+        this.forecastHours = forecastHours;
         key = fallbackStation + "|" + automatic + "|" + cityPath;
     }
 
@@ -28,7 +33,8 @@ public final class WeatherConfig {
         WeatherSource source = WeatherSource.fromId(p.getString("source", "hmc"));
         return new WeatherConfig(p.getBoolean("automatic", false),
                 p.getString("city_path", ""), p.getString("city_name", "Москва"),
-                source, p.getString(source.provider.apiKeyPreference(), ""));
+                source, p.getString(source.provider.apiKeyPreference(), ""),
+                p.getBoolean("show_forecast", true), p.getInt("forecast_hours", 3));
     }
 
     boolean isCurrent(Context context) {

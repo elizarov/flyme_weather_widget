@@ -53,7 +53,8 @@ public final class WidgetRenderer {
         ForecastProvider<?> provider = config.source.provider;
         WeatherCards cards = provider.cards(context, config, now);
         renderCard(context, views, cards.first, true, lightText, color);
-        renderCard(context, views, cards.second, false, lightText, color);
+        views.setViewVisibility(R.id.weather_second_card, config.showForecast ? android.view.View.VISIBLE : android.view.View.GONE);
+        if (config.showForecast) renderCard(context, views, cards.second, false, lightText, color);
         views.setTextViewText(R.id.appwidget_city, cards.city);
         views.setTextColor(R.id.appwidget_city, color);
         views.setTextViewText(R.id.weather_credit, provider.credit);

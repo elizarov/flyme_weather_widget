@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="me.elizarov.weather.overlay" android:versionCode="5" android:versionName="0.2.3">
+    package="me.elizarov.weather.overlay" android:versionCode="6" android:versionName="0.2.4">
     <uses-sdk android:minSdkVersion="30" android:targetSdkVersion="30" />
     <application android:hasCode="false" android:label="Дата и время · Flyme overlay" />
     <overlay android:targetPackage="com.flyme.auto.launcher" android:isStatic="false"

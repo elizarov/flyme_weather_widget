@@ -56,7 +56,9 @@ public final class WeatherSettingsActivity extends Activity {
     private String versionName;
     private EditText query;
     private ListView results;
-    private Switch automatic;
+    private Switch automatic, forecast;
+    private LinearLayout forecastRow, hourChoices;
+    private TextView nextPeriod;
     private final EnumMap<WeatherSource, Button> sourceButtons = new EnumMap<>(WeatherSource.class);
     private LinearLayout sourceRow, locationOptions, keyControls;
     private boolean searchingWithKeyboard;
@@ -89,27 +91,26 @@ public final class WeatherSettingsActivity extends Activity {
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         FrameLayout.LayoutParams column = new FrameLayout.LayoutParams(-1, -1);
-        column.setMargins(dp(64), dp(32), dp(64), dp(32));
+        column.setMargins(dp(64), dp(64), dp(64), dp(32));
         root.addView(content, column);
         LinearLayout header = row();
-        ImageButton back = new ImageButton(this);
-        back.setTag("settings_back");
-        back.setPadding(0, 0, 0, 0);
-        back.setImageResource(R.drawable.ic_back);
-        back.setColorFilter(ink);
-        back.setBackgroundColor(Color.TRANSPARENT);
-        back.setContentDescription("Назад");
-        back.setOnClickListener(v -> finish());
-        header.addView(back, new LinearLayout.LayoutParams(dp(64), dp(64)));
-        TextView title = text("Погода", 38, ink);
+        ImageButton close = new ImageButton(this);
+        close.setTag("settings_close");
+        close.setPadding(dp(19), dp(19), dp(19), dp(19));
+        close.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        close.setImageResource(R.drawable.ic_close);
+        close.setColorFilter(ink);
+        close.setBackground(actionBackground(false));
+        close.setContentDescription("Закрыть");
+        close.setOnClickListener(v -> finish());
+        header.addView(close, new LinearLayout.LayoutParams(dp(80), dp(80)));
+        TextView title = text("Погода", 48, ink);
         title.setTypeface(MEDIUM);
         title.setIncludeFontPadding(false);
-        title.setPadding(0, dp(2), 0, dp(2));
+        title.setPadding(0, 0, 0, 0);
         title.setTag("settings_title");
-        title.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams titlePosition = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1);
-        titlePosition.setMarginStart(dp(20));
-        header.addView(title, titlePosition);
+        title.setGravity(Gravity.CENTER);
+        header.addView(title, new LinearLayout.LayoutParams(0, dp(80), 1));
         try {
             versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception error) {
@@ -123,15 +124,7 @@ public final class WeatherSettingsActivity extends Activity {
         about.setBackgroundColor(Color.TRANSPARENT);
         about.setContentDescription("О приложении");
         about.setOnClickListener(v -> showAbout());
-        header.addView(about, new LinearLayout.LayoutParams(dp(64), dp(64)));
-        header.addOnLayoutChangeListener((view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
-            android.graphics.Rect letters = new android.graphics.Rect();
-            String heading = title.getText().toString();
-            title.getPaint().getTextBounds(heading, 0, heading.length(), letters);
-            float center = title.getTop() + title.getBaseline() + (letters.top + letters.bottom) / 2f;
-            back.setTranslationY(center - back.getTop() - back.getHeight() / 2f);
-            about.setTranslationY(center - about.getTop() - about.getHeight() / 2f);
-        });
+        header.addView(about, new LinearLayout.LayoutParams(dp(80), dp(80)));
         content.addView(header);
         gap(content, 16);
         sourceRow = row();
@@ -152,6 +145,41 @@ public final class WeatherSettingsActivity extends Activity {
         sourcePosition.setMarginStart(dp(48));
         sourceRow.addView(choices, sourcePosition);
         content.addView(sourceRow, new LinearLayout.LayoutParams(-1, dp(112)));
+        forecastRow = row();
+        forecastRow.setPadding(0, dp(16), 0, 0);
+        forecast = new Switch(this);
+        forecast.setText("Прогноз");
+        forecast.setTextSize(34);
+        forecast.setTextColor(ink);
+        forecast.setSwitchPadding(dp(20));
+        styleSwitch(forecast);
+        forecastRow.addView(forecast, new LinearLayout.LayoutParams(-2, -1));
+        LinearLayout.LayoutParams detail = new LinearLayout.LayoutParams(0, -1, 1);
+        detail.setMarginStart(dp(32));
+        nextPeriod = text("след. день/ночь", 30, muted);
+        nextPeriod.setGravity(Gravity.CENTER_VERTICAL);
+        forecastRow.addView(nextPeriod, detail);
+        hourChoices = row();
+        forecastRow.addView(hourChoices, detail);
+        for (int hours : new int[]{1, 3, 6, 12}) {
+            Button choice = keyButton(hours + (hours == 1 ? " час" : hours == 3 ? " часа" : " часов"));
+            choice.setTag(hours);
+            choice.setPadding(0, 0, 0, 0);
+            choice.setBackground(actionBackground(true));
+            LinearLayout.LayoutParams size = new LinearLayout.LayoutParams(0, -1, 1);
+            if (hourChoices.getChildCount() > 0) size.setMarginStart(dp(12));
+            hourChoices.addView(choice, size);
+            choice.setOnClickListener(v -> {
+                WeatherConfig.settings(this).edit().putInt("forecast_hours", hours).apply();
+                refreshForecastDisplay();
+            });
+        }
+        forecast.setOnCheckedChangeListener((button, checked) -> {
+            if (updating) return;
+            WeatherConfig.settings(this).edit().putBoolean("show_forecast", checked).apply();
+            refreshForecastDisplay();
+        });
+        content.addView(forecastRow, new LinearLayout.LayoutParams(-1, dp(88)));
         keyControls = new LinearLayout(this);
         keyControls.setTag("api_key_controls");
         keyControls.setOrientation(LinearLayout.VERTICAL);
@@ -210,7 +238,7 @@ public final class WeatherSettingsActivity extends Activity {
         content = locationOptions;
         gap(content, 24);
         automatic = new Switch(this);
-        styleSwitch();
+        styleSwitch(automatic);
         automatic.setText("Автоматическая локация");
         automatic.setTextSize(34);
         automatic.setTextColor(ink);
@@ -377,22 +405,27 @@ public final class WeatherSettingsActivity extends Activity {
         return button;
     }
 
-    private void styleSwitch() {
+    private void refreshForecastDisplay() {
+        updateControls();
+        WeatherWidgetProvider.refresh(this);
+    }
+
+    private void styleSwitch(Switch control) {
         GradientDrawable thumb = shape(Color.WHITE, 2);
         thumb.setSize(dp(30), dp(42));
-        automatic.setShowText(false);
-        automatic.setThumbTintList(null);
-        automatic.setTrackTintList(null);
+        control.setShowText(false);
+        control.setThumbTintList(null);
+        control.setTrackTintList(null);
         LayerDrawable paddedThumb = new LayerDrawable(new Drawable[]{thumb});
         int inset = dp(8);
         paddedThumb.setLayerInset(0, inset, inset, inset, inset);
-        automatic.setThumbDrawable(paddedThumb);
+        control.setThumbDrawable(paddedThumb);
         StateListDrawable track = new StateListDrawable();
         track.addState(new int[]{android.R.attr.state_checked}, shape(ACCENT, 4));
         track.addState(new int[0], shape(0xff68717d, 4));
-        automatic.setTrackDrawable(track);
-        automatic.setSwitchMinWidth(dp(96));
-        automatic.setSplitTrack(false);
+        control.setTrackDrawable(track);
+        control.setSwitchMinWidth(dp(96));
+        control.setSplitTrack(false);
     }
 
     private void showAbout() {
@@ -559,6 +592,18 @@ public final class WeatherSettingsActivity extends Activity {
         WeatherConfig config = WeatherConfig.read(this);
         updating = true;
         sourceButtons.forEach((source, button) -> button.setSelected(source == config.source));
+        forecastRow.setVisibility(searchingWithKeyboard ? View.GONE : View.VISIBLE);
+        forecast.setChecked(config.showForecast);
+        boolean hourly = config.source.provider instanceof HourlyForecastProvider;
+        nextPeriod.setVisibility(hourly ? View.GONE : View.VISIBLE);
+        nextPeriod.setAlpha(config.showForecast ? 1f : 0.5f);
+        hourChoices.setVisibility(hourly ? View.VISIBLE : View.GONE);
+        hourChoices.setAlpha(config.showForecast ? 1f : 0.5f);
+        for (int i = 0; i < hourChoices.getChildCount(); i++) {
+            View choice = hourChoices.getChildAt(i);
+            choice.setEnabled(config.showForecast);
+            choice.setSelected((int) choice.getTag() == config.forecastHours);
+        }
         automatic.setChecked(config.automatic);
         updating = false;
         boolean usesKey = config.source.provider.requiresApiKey();

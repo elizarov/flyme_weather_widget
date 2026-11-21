@@ -74,7 +74,7 @@ public abstract class HourlyForecastProvider extends ForecastProvider<HourlyFore
         SharedPreferences cache = cache(context);
         String json = cachedForecast(cache, config);
         String city = matches(cache, config) ? cache.getString("city", config.cityName) : config.cityName;
-        return new WeatherCards(card(json, now, now), card(json, now + 3 * HourClock.HOUR, now), city);
+        return new WeatherCards(card(json, now, now), card(json, now + config.forecastHours * HourClock.HOUR, now), city);
     }
 
     public static final class Reading {

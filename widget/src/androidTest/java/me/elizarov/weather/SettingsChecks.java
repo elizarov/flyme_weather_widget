@@ -45,13 +45,11 @@ final class SettingsChecks {
             }
             require(root.findViewWithTag("version") == null, "version removed from header");
             TextView title = root.findViewWithTag("settings_title");
-            View back = root.findViewWithTag("settings_back");
-            android.graphics.Rect ink = new android.graphics.Rect();
-            title.getPaint().getTextBounds(title.getText().toString(), 0, title.length(), ink);
-            require(title.getHeight() - title.getPaddingTop() - title.getPaddingBottom() >= title.getLayout().getHeight(),
-                    "full title line fits between vertical padding");
-            float center = title.getTop() + title.getBaseline() + (ink.top + ink.bottom) / 2f;
-            require(Math.abs(back.getY() + back.getHeight() / 2f - center) < 0.6f, "back arrow centered on heading ink");
+            View close = root.findViewWithTag("settings_close");
+            require("Закрыть".contentEquals(close.getContentDescription()), "close button");
+            View header = (View) title.getParent();
+            require(Math.abs(title.getLeft() + title.getRight() - header.getWidth()) <= 1,
+                    "heading centered in popup");
             root.findViewWithTag("about").performClick();
         });
         test.waitForIdleSync();
